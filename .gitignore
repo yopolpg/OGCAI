@@ -1,0 +1,168 @@
+# ==============================================================================
+# OGCAI .gitignore
+# Protects confidential data, personal storage, secrets, and build/env artifacts
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment Variables & Secrets (CRITICAL)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+secrets/
+private/
+
+# ------------------------------------------------------------------------------
+# 2. OGCAI Storage & Confidential Personal Vault (150GB+ / DB / Vectors / Vault)
+# ------------------------------------------------------------------------------
+storage/db/*.db
+storage/db/*.db-wal
+storage/db/*.db-shm
+storage/db/backups/*
+storage/vectors/*
+storage/vault/*
+storage/cache/*
+storage/logs/*
+
+# Keep directory structure tracked in git via .gitkeep and README
+!storage/**/.gitkeep
+!storage/README.md
+!storage/vault/.gitkeep
+!storage/db/.gitkeep
+!storage/db/backups/.gitkeep
+!storage/vectors/.gitkeep
+!storage/cache/.gitkeep
+
+# ------------------------------------------------------------------------------
+# 3. Personal Identity & Academic Schedule Context
+# ------------------------------------------------------------------------------
+.agents/rules/user_profile_facts.md
+.agents/rules/academic_schedule.md
+.agents/rules/*.personal.md
+
+# ------------------------------------------------------------------------------
+# 4. Python Virtual Environments, Bytecode & Caches
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.venv/
+backend/.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Type Checking & Linting Caches
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ------------------------------------------------------------------------------
+# 5. Frontend (Node.js / Vite / React / TypeScript)
+# ------------------------------------------------------------------------------
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Frontend Build Outputs & Cache
+dist/
+frontend/dist/
+dist-ssr/
+frontend/dist-ssr/
+*.local
+.eslintcache
+.stylelintcache
+.vite/
+frontend/.vite/
+
+# ------------------------------------------------------------------------------
+# 6. OS Generated Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# ------------------------------------------------------------------------------
+# 7. IDEs & Editors
+# ------------------------------------------------------------------------------
+.idea/
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# VS Code (preserve settings/extensions if tracked, ignore temp workspace states)
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.vscode/.ropeproject
+
+# ------------------------------------------------------------------------------
+# 8. Logs & Temporary Files
+# ------------------------------------------------------------------------------
+*.log
+logs/
+temp/
+tmp/
+*.tmp
+*.bak
+*.swp
+*.swo
+*~
