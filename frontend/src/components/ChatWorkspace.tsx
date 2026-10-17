@@ -96,6 +96,133 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
     );
   };
 
+  // Rich inline text formatter (**bold** and `code`)
+  const renderInlineFormatting = (lineText: string) => {
+    const parts = lineText.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return (
+          <strong key={idx} className="font-semibold text-white">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code key={idx} className="px-1.5 py-0.5 rounded bg-slate-900/90 border border-slate-700/80 text-cyan-300 font-mono text-[11px]">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      return <React.Fragment key={idx}>{part}</React.Fragment>;
+    });
+  };
+
+  // Render Markdown blocks including inline chart images ![alt](url) and code blocks
+  const renderRichContent = (content: string) => {
+    if (!content) return null;
+
+    // Split by fenced code blocks first
+    const codeBlockRegex = /```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g;
+    const segments: Array<{ type: 'text' | 'code'; lang?: string; value: string }> = [];
+    let lastIdx = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = codeBlockRegex.exec(content)) !== null) {
+      if (match.index > lastIdx) {
+        segments.push({ type: 'text', value: content.slice(lastIdx, match.index) });
+      }
+      segments.push({ type: 'code', lang: match[1] || 'code', value: match[2] });
+      lastIdx = codeBlockRegex.lastIndex;
+    }
+    if (lastIdx < content.length) {
+      segments.push({ type: 'text', value: content.slice(lastIdx) });
+    }
+
+    return (
+      <div className="space-y-2 leading-relaxed break-words font-normal">
+        {segments.map((seg, sIdx) => {
+          if (seg.type === 'code') {
+            return (
+              <div key={sIdx} className="my-2 rounded-xl overflow-hidden border border-slate-700/80 bg-slate-950/90">
+                <div className="px-3 py-1 bg-slate-900/90 border-b border-slate-800 text-[10px] font-mono text-slate-400 flex justify-between">
+                  <span>{seg.lang}</span>
+                </div>
+                <pre className="p-3 text-xs font-mono text-emerald-300 overflow-x-auto">
+                  <code>{seg.value}</code>
+                </pre>
+              </div>
+            );
+          }
+
+          const lines = seg.value.split('\n');
+          return (
+            <div key={sIdx} className="space-y-1">
+              {lines.map((line, lIdx) => {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                  return <div key={lIdx} className="h-1.5" />;
+                }
+
+                // Markdown Image: ![alt](url)
+                const imgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+                if (imgMatch) {
+                  const altText = imgMatch[1] || 'Chart';
+                  const rawUrl = imgMatch[2];
+                  const resolvedUrl =
+                    rawUrl.startsWith('/api') && typeof window !== 'undefined' && window.location.port === '5173'
+                      ? `http://127.0.0.1:8000${rawUrl}`
+                      : rawUrl;
+                  return (
+                    <div key={lIdx} className="my-3 rounded-xl overflow-hidden border border-cyan-500/30 bg-slate-950/80 shadow-xl">
+                      <img src={resolvedUrl} alt={altText} className="w-full max-h-80 object-contain mx-auto" />
+                      <div className="px-3 py-1.5 bg-slate-900/90 border-t border-slate-800/80 text-[10px] text-cyan-300 text-center">
+                        📊 {altText}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Horizontal Rule
+                if (trimmed === '---') {
+                  return <hr key={lIdx} className="border-slate-800 my-2" />;
+                }
+
+                // Headings
+                if (trimmed.startsWith('### ')) {
+                  return (
+                    <h3 key={lIdx} className="text-sm md:text-base font-bold text-cyan-300 pt-1">
+                      {renderInlineFormatting(trimmed.slice(4))}
+                    </h3>
+                  );
+                }
+                if (trimmed.startsWith('## ')) {
+                  return (
+                    <h2 key={lIdx} className="text-base font-bold text-cyan-300 pt-1">
+                      {renderInlineFormatting(trimmed.slice(3))}
+                    </h2>
+                  );
+                }
+
+                // Bullet points
+                if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                  return (
+                    <div key={lIdx} className="flex items-start gap-2 pl-1">
+                      <span className="text-cyan-400 mt-1 text-[10px]">●</span>
+                      <div className="flex-1">{renderInlineFormatting(trimmed.slice(2))}</div>
+                    </div>
+                  );
+                }
+
+                return <div key={lIdx}>{renderInlineFormatting(line)}</div>;
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] bg-gradient-to-b from-[#090d16] via-[#0b1120] to-[#090d16] relative overflow-hidden">
       {/* Messages Scroll Area */}
@@ -124,9 +251,12 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
             </div>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, mIndex) => {
             const isUser = msg.role === 'user';
             const isStarred = starredIds.has(msg.id) || msg.is_starred;
+            const isError = msg.model === 'error';
+            const prevUserMsg = mIndex > 0 && messages[mIndex - 1]?.role === 'user' ? messages[mIndex - 1].content : '';
+
             return (
               <div
                 key={msg.id}
@@ -142,6 +272,8 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   className={`group relative max-w-[85%] md:max-w-[75%] rounded-2xl p-4 transition-all ${
                     isUser
                       ? 'bg-slate-800 text-slate-100 border border-slate-700/80'
+                      : isError
+                      ? 'bg-rose-950/30 text-rose-200 border border-rose-700/50'
                       : 'glass-panel text-slate-200 border border-slate-800/80'
                   }`}
                 >
@@ -173,9 +305,26 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                   )}
 
                   {/* Message Content */}
-                  <div className="whitespace-pre-wrap leading-relaxed break-words font-normal">
-                    {msg.content}
-                  </div>
+                  {isUser ? (
+                    <div className="whitespace-pre-wrap leading-relaxed break-words font-normal">
+                      {msg.content}
+                    </div>
+                  ) : (
+                    renderRichContent(msg.content)
+                  )}
+
+                  {/* Retry Button if Error */}
+                  {isError && prevUserMsg && (
+                    <div className="mt-3 pt-2 border-t border-rose-800/40 flex justify-end">
+                      <button
+                        onClick={() => onSendMessage(prevUserMsg)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-600/80 hover:bg-rose-500 text-white text-xs font-medium transition-all"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        <span>ลองส่งใหม่อีกครั้ง</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {isUser && (
@@ -203,8 +352,8 @@ export const ChatWorkspace: React.FC<ChatWorkspaceProps> = ({
                 </div>
               )}
 
-              <div className="whitespace-pre-wrap leading-relaxed break-words font-normal">
-                {streamingContent || 'กำลังประมวลผลคำตอบ...'}
+              <div>
+                {streamingContent ? renderRichContent(streamingContent) : 'กำลังประมวลผลคำตอบ...'}
                 <span className="streaming-cursor" />
               </div>
             </div>

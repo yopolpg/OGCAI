@@ -171,6 +171,18 @@ class DatabaseRepository:
         res = await session.execute(stmt)
         return res.rowcount > 0
 
+    @staticmethod
+    async def get_starred_by_message_id(session: AsyncSession, message_id: str) -> Optional[StarredKnowledge]:
+        stmt = select(StarredKnowledge).where(StarredKnowledge.message_id == message_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def delete_starred_by_message_id(session: AsyncSession, message_id: str) -> bool:
+        stmt = delete(StarredKnowledge).where(StarredKnowledge.message_id == message_id)
+        res = await session.execute(stmt)
+        return res.rowcount > 0
+
     # ------------------ Finance & Habit Logs ------------------
     @staticmethod
     async def add_transaction(

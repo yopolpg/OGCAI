@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Server configuration
-    HOST: str = "127.0.0.1"
+    HOST: str = "0.0.0.0"
     PORT: int = 8000
     
     # Ollama Local Service Configuration

@@ -120,30 +120,137 @@ class HealthModule:
         focus_goal: str = "Productive Coding & Health"
     ) -> Dict[str, Any]:
         """
-        Generate an optimized daily time-blocking schedule based on chronotype and goals.
+        Generate an optimized dynamic daily time-blocking schedule based on user wake/sleep times and goals.
         """
-        routine_schedule = [
-            {"time": "07:00 - 07:30", "activity": "☀️ ตื่นนอน ดื่มน้ำ 1 แก้วใหญ่ ยืดเหยียดร่างกาย รับแสงแดดยามเช้า", "energy": "Medium"},
-            {"time": "07:30 - 08:30", "activity": "🍳 ทานมื้อเช้าที่มีโปรตีนสูง + วางแผน To-Do 3 อย่างสำคัญของวัน", "energy": "High"},
-            {"time": "08:30 - 12:00", "activity": "🚀 Deep Work Block #1: โฟกัสงานยาก งานตรรกะ หรือการเขียนโค้ด (ปิดเสียงแจ้งเตือน)", "energy": "Peak"},
-            {"time": "12:00 - 13:00", "activity": "🥗 ทานมื้อเที่ยงที่มีสารอาหารครบถ้วน + พักสายตา เดินย่อย 15 นาที", "energy": "Medium"},
-            {"time": "13:00 - 16:30", "activity": "💻 Deep Work Block #2: งานประสานงาน แก้ไขปัญหา หรือประชุม", "energy": "Medium-High"},
-            {"time": "16:30 - 17:30", "activity": "🏋️ Workout & Cardio: ออกกำลังกาย 30-45 นาที หรือเดินเร็ว", "energy": "High"},
-            {"time": "17:30 - 19:00", "activity": "🍲 ทานมื้อเย็น + พักผ่อน สังสรรค์กับครอบครัวหรือเพื่อน", "energy": "Medium"},
-            {"time": "19:00 - 21:00", "activity": "📚 Study & Skill Up: อ่านหนังสือ, ศึกษาเทคโนโลยีใหม่, ทบทวน Flashcards", "energy": "High"},
-            {"time": "21:00 - 22:30", "activity": "🧘 Wind-down Routine: ลดการใช้จอมือถือ/แสงสีฟ้า, ฟังเพลงสบายๆ, จดบันทึก Journal", "energy": "Low"},
-            {"time": "22:30 - 23:00", "activity": "🌙 เตรียมตัวนอน ห้องมืดและเย็น เพื่อการหลับลึกอย่างมีคุณภาพ", "energy": "Rest"}
-        ]
+        def parse_mins(t_str: str) -> int:
+            try:
+                parts = t_str.strip().split(":")
+                return int(parts[0]) * 60 + int(parts[1])
+            except Exception:
+                return 7 * 60
+
+        def fmt_mins(m: int) -> str:
+            m = m % 1440
+            return f"{m // 60:02d}:{m % 60:02d}"
+
+        wake_m = parse_mins(wake_time)
+        sleep_m = parse_mins(sleep_time)
+        
+        # Calculate awake duration in minutes
+        awake_m = (sleep_m - wake_m) if sleep_m > wake_m else (1440 - wake_m + sleep_m)
+        if awake_m < 360:  # Safety check: at least 6 hours awake
+            awake_m = 960  # default 16 hours
+            sleep_m = (wake_m + awake_m) % 1440
+
+        schedule = []
+        cur = wake_m
+
+        if workout_slot == "morning":
+            # Morning workout path
+            t_workout = min(45, int(awake_m * 0.05))
+            schedule.append({
+                "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_workout)}",
+                "activity": f"🏃 Morning Workout & Hydration: ออกกำลังกาย 30-40 นาที + ดื่มน้ำ 1 แก้วใหญ่",
+                "energy": "High"
+            })
+            cur += t_workout
+
+            t_prep = min(45, int(awake_m * 0.05))
+            schedule.append({
+                "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_prep)}",
+                "activity": f"🍳 อาหารเช้าโปรตีนสูง & จัดลำดับ 3 งานสำคัญประจำวัน ({focus_goal})",
+                "energy": "High"
+            })
+            cur += t_prep
+        else:
+            # Morning wake & light stretch path
+            t_wake = min(30, int(awake_m * 0.04))
+            schedule.append({
+                "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_wake)}",
+                "activity": f"☀️ ตื่นนอน ดื่มน้ำ 1 แก้วใหญ่ ยืดเหยียดร่างกาย รับแสงแดดยามเช้า",
+                "energy": "Medium"
+            })
+            cur += t_wake
+
+            t_prep = min(60, int(awake_m * 0.06))
+            schedule.append({
+                "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_prep)}",
+                "activity": f"🍳 อาหารเช้า & วางแผนเป้าหมาย Focus: {focus_goal}",
+                "energy": "High"
+            })
+            cur += t_prep
+
+        # Deep Work Block 1
+        t_work1 = max(120, int(awake_m * 0.22))
+        schedule.append({
+            "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_work1)}",
+            "activity": f"🚀 Deep Work Block #1: โฟกัสสูงสุดกับ {focus_goal} (ตัดสิ่งรบกวน, เทคนิค Pomodoro)",
+            "energy": "Peak"
+        })
+        cur += t_work1
+
+        # Lunch Break
+        t_lunch = min(60, int(awake_m * 0.06))
+        schedule.append({
+            "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_lunch)}",
+            "activity": f"🥗 อาหารกลางวัน & พักสายตา ผ่อนคลายสมอง (งดทำงานหน้าจอ)",
+            "energy": "Medium"
+        })
+        cur += t_lunch
+
+        # Deep Work Block 2
+        t_work2 = max(120, int(awake_m * 0.20))
+        schedule.append({
+            "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_work2)}",
+            "activity": f"💻 Deep Work Block #2: งานวิเคราะห์และพัฒนา ({focus_goal})",
+            "energy": "Medium-High"
+        })
+        cur += t_work2
+
+        # Evening workout if scheduled for evening
+        if workout_slot != "morning":
+            t_workout_eve = min(60, int(awake_m * 0.07))
+            schedule.append({
+                "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_workout_eve)}",
+                "activity": f"🏋️ Workout & Cardio: ออกกำลังกาย 45 นาที วิ่ง/บอดี้เวท ผ่อนคลายความเครียด",
+                "energy": "High"
+            })
+            cur += t_workout_eve
+
+        # Dinner
+        t_dinner = min(60, int(awake_m * 0.07))
+        schedule.append({
+            "time": f"{fmt_mins(cur)} - {fmt_mins(cur + t_dinner)}",
+            "activity": f"🍲 อาหารเย็นเบาๆ สังสรรค์และพักผ่อนกับครอบครัว/กิจกรรมที่ชอบ",
+            "energy": "Medium"
+        })
+        cur += t_dinner
+
+        # Skill Growth & Personal Review
+        remaining_before_winddown = max(45, (sleep_m - cur - 60) if sleep_m > cur else 60)
+        schedule.append({
+            "time": f"{fmt_mins(cur)} - {fmt_mins(cur + remaining_before_winddown)}",
+            "activity": f"📚 Personal Growth & Review: ทบทวน Flashcards, สรุปสิ่งที่ได้เรียนรู้วันนี้",
+            "energy": "Medium-High"
+        })
+        cur += remaining_before_winddown
+
+        # Wind-down
+        schedule.append({
+            "time": f"{fmt_mins(cur)} - {fmt_mins(sleep_m)}",
+            "activity": f"🌙 Wind-down Routine & Sleep Prep: ปิดหน้าจอแสงสีฟ้า นั่งสมาธิหรืออ่านหนังสือ พร้อมนอนที่ {sleep_time}",
+            "energy": "Rest"
+        })
 
         return {
             "wake_time": wake_time,
             "sleep_time": sleep_time,
             "focus_goal": focus_goal,
-            "schedule": routine_schedule,
+            "schedule": schedule,
             "wellness_tips": [
                 "ดื่มน้ำอย่างน้อย 500ml ทันทีหลังตื่นนอนเพื่อกระตุ้นระบบเผาผลาญ",
                 "ใช้เทคนิค Pomodoro (50 นาทีทำงาน / 10 นาทีพักสายตา)",
-                "งดคาเฟอีนหลัง 14:00 เพื่อคุณภาพการนอนหลับลึก (Deep Sleep)"
+                "งดคาเฟอีนล่วงหน้าอย่างน้อย 6-8 ชั่วโมงก่อนเวลานอนเพื่อคุณภาพการนอนหลับลึก (Deep Sleep)"
             ]
         }
 

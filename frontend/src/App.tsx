@@ -135,9 +135,9 @@ export const App: React.FC = () => {
         accumulated += token;
         setStreamingContent(accumulated);
       },
-      onDone: () => {
+      onDone: (doneData?: any) => {
         const assistantMsg: Message = {
-          id: `msg_${Date.now()}`,
+          id: doneData?.message_id || `msg_${Date.now()}`,
           role: 'assistant',
           content: accumulated,
           model: currentModel,

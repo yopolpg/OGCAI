@@ -99,6 +99,24 @@ async def toggle_star_message(message_id: str, db: AsyncSession = Depends(get_db
     msg = await DatabaseRepository.toggle_star_message(db, message_id)
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
+        
+    if msg.is_starred:
+        # Automatically record in StarredKnowledge base
+        existing = await DatabaseRepository.get_starred_by_message_id(db, message_id)
+        if not existing:
+            title = msg.content[:50].strip().replace("\n", " ") or "บันทึกคำตอบสำคัญ"
+            await DatabaseRepository.create_starred_knowledge(
+                db,
+                title=title,
+                content=msg.content,
+                summary=f"บันทึกจากโมเดล {msg.model or 'AI'}",
+                tags=f"chat,{msg.model or 'ai'}",
+                message_id=msg.id
+            )
+    else:
+        # Remove from StarredKnowledge when unstarred
+        await DatabaseRepository.delete_starred_by_message_id(db, message_id)
+
     return {"id": msg.id, "is_starred": msg.is_starred}
 
 # ----------------- User Profile Memory -----------------
